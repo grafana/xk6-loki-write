@@ -14,35 +14,40 @@ import loki from 'k6/x/ngloki';
  */
 // const conf = new loki.Config(BASE_URL);
 // const client = new loki.Client(conf);
-loki.Setup(
-{
-    "staticLabels": [{"namespace": "loki-prod-001"}, {"source": "kafka"}],
-    "percentOfVus": 10,
-    lines: 100,
-    bytes: 200,
-},
-{
-    "staticLabels": [{"namespace": "loki-prod-001"}, {"container": "distributor"}],
-    "percentOfVus": 90,
-    lines: 1000,
-    bytes: 5000,
-},
-);
 
 /**
  * Define test scenario
  */
 export const options = {
-  vus: 10,
-  iterations: 10,
+  vus: 2,
+  iterations: 3,
 };
+
+export function setup() {
+  let vuSpecs = loki.Setup(
+    {
+        "staticLabels": [{"namespace": "loki-prod-001"}, {"source": "kafka"}],
+        "percentOfVus": 1,
+        lines: 100,
+        bytes: 200,
+    },
+    {
+        "staticLabels": [{"namespace": "loki-prod-001"}, {"container": "distributor"}],
+        "percentOfVus": 1,
+        lines: 1000,
+        bytes: 5000,
+    },
+  );
+  console.log('return from loki.Setup: ' + JSON.stringify(vuSpecs));
+  return vuSpecs;
+}
 
 /**
  * "main" function for each VU iteration
  */
-export default () => {
+export default (data) => {
   // Run the eventloops
-  loki.Tick()
+  loki.Tick(data)
 
   // Wait before next iteration, maybe put this in Tick function
   sleep(1);
