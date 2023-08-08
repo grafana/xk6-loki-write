@@ -2,8 +2,10 @@ package loki
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/dop251/goja"
+	"github.com/prometheus/tsdb/labels"
 	"github.com/sirupsen/logrus"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib/netext/httpext"
@@ -17,9 +19,7 @@ func init() {
 var _ modules.Module = &LokiRoot{}
 var _ modules.Instance = &Loki{}
 
-type LokiRoot struct {
-	vus []vuSpec
-}
+type LokiRoot struct{}
 
 func (*LokiRoot) NewModuleInstance(vu modules.VU) modules.Instance {
 	logger := vu.InitEnv().Logger.WithField("component", "xk6-ngloki")
@@ -35,68 +35,57 @@ type Loki struct {
 func (l *Loki) Exports() modules.Exports {
 	return modules.Exports{
 		Named: map[string]interface{}{
-			"Setup": l.setup,
-			"Tick":  l.Tick,
+			"Tick": l.Tick,
 		},
 	}
 }
 
-func (l *Loki) setup(c goja.ConstructorCall) *goja.Object {
-	rt := l.vu.Runtime()
-
-	state := l.vu.State()
-	if state == nil {
-		l.logger.Errorf("unable to get state in Setup")
-		return nil
-	}
-	totalVUs := state.Options.VUs.ValueOrZero()
-	if totalVUs == 0 {
-		l.logger.Errorf("no vus")
-		return nil
-	}
-	vus := make([]vuSpec, totalVUs)
-
-	// Hardcoded for now, assume percentages are numbers
-	// TODO: replace with config from Javascript
-	testConfigs := parseTestConfig()
-	l.logger.Infof("testConfigs: %v", testConfigs)
-
-	var currentVu int
-	for _, tc := range testConfigs {
-		for i := 0; i < tc.PercentOfVUs; i++ {
-			lc, err := createLokiConfig(currentVu)
-			if err != nil {
-				l.logger.Errorf("can't create loki client config")
-				return nil
-			}
-
-			newOne := *newVu(currentVu, lc, tc, l.logger)
-			vus[currentVu] = newOne
-			l.logger.Infof("Adding vu %+v", newOne)
-			currentVu++
-		}
-	}
-
-	vSpec := vuSpecs{
-		vus: vus,
-	}
-
-	v := rt.ToValue(vSpec)
-	l.logger.Infof("ToValue %+v", v)
-	t := v.ToObject(rt)
-	// l.logger.Infof("ToObject %+v", t.Export())
-	bts, err := t.MarshalJSON()
-	if err != nil {
-		l.logger.Errorf("ToObject as json error: %v", err)
-	} else {
-		l.logger.Infof("ToObject as json: %v", string(bts))
-	}
-
-	return t
+type TestConfig struct {
+	StaticLabels labels.Labels
+	LineSize     int
+	BytesPerLine int
+	Frequency    int
 }
 
-func (l *Loki) Tick(data interface{}) (httpext.Response, error) {
-	l.logger.Infof("received data: %+v", data)
+func isNully(v goja.Value) bool {
+	return v == nil || goja.IsUndefined(v) || goja.IsNull(v)
+}
+
+func (l *Loki) parseTestConfigObject(obj *goja.Object, tc *TestConfig) error {
+	rt := l.vu.Runtime()
+
+	if v := obj.Get("lines"); !isNully(v) {
+		tc.LineSize = int(v.ToInteger())
+	}
+
+	if v := obj.Get("bytes"); !isNully(v) {
+		tc.BytesPerLine = int(v.ToInteger())
+	}
+
+	if v := obj.Get("frequency"); !isNully(v) {
+		tc.Frequency = int(v.ToInteger())
+	}
+
+	if v := obj.Get("staticLabels"); !isNully(v) {
+		var stringLabels map[string]string
+		if err := rt.ExportTo(v, &stringLabels); err != nil {
+			return fmt.Errorf("staticLabels should be a map of string to strings: %w", err)
+		}
+
+		lbls := labels.FromMap(stringLabels)
+		tc.StaticLabels = lbls
+	}
+
+	return nil
+}
+
+func (l *Loki) Tick(obj *goja.Object) (httpext.Response, error) {
+	tc := TestConfig{}
+	err := l.parseTestConfigObject(obj, &tc)
+	if err != nil {
+		return *httpext.NewResponse(), err
+	}
+	l.logger.Infof("received data: %+v", tc)
 
 	state := l.vu.State()
 	if state == nil {
@@ -106,21 +95,23 @@ func (l *Loki) Tick(data interface{}) (httpext.Response, error) {
 		totalVUs := state.Options.VUs.ValueOrZero()
 		totalIterations := state.Options.Iterations.ValueOrZero()
 
-			l.logger.Infof(
-				"VUId: %v, VUIDGlobal: %v, Scenario Iter: %v, Scenario Local Iter: %v, Scenario Glocal Iter: %v, total VUs: %v, totalOperations: %v",
-				state.VUID, // *
-				state.VUIDGlobal,
-				state.GetScenarioVUIter(),
-				state.GetScenarioLocalVUIter(),
-				state.GetScenarioGlobalVUIter(),
-				totalVUs, // *
-				totalIterations,
-			)
+		l.logger.Infof(
+			"VUId: %v, VUIDGlobal: %v, Scenario Iter: %v, Scenario Local Iter: %v, Scenario Glocal Iter: %v, total VUs: %v, totalOperations: %v",
+			state.VUID, // *
+			state.VUIDGlobal,
+			state.GetScenarioVUIter(), // *
+			state.GetScenarioLocalVUIter(),
+			state.GetScenarioGlobalVUIter(),
+			totalVUs, // *
+			totalIterations,
+		)
 	*/
 
-	// TODO: send the data for the current vu for 1 second, waiting if needed
-	// currentVu := vus[state.VUID]
-	// l.logger.Infof("vuSpec: %+v", currentVu)
+	/*
+		// TODO: send the data for the current vu for 1 second, waiting if needed
+		currentVu := specs.Vus[state.VUID]
+		l.logger.Infof("vuSpec: %+v", currentVu)
+	*/
 
 	// TODO: update the response
 	return *httpext.NewResponse(), nil
