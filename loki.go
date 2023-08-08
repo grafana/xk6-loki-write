@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/prometheus/common/model"
@@ -116,6 +117,8 @@ func (l *Loki) parseTestConfigObject(obj *goja.Object, tc *TestConfig) error {
 }
 
 func (l *Loki) tick(obj *goja.Object) (httpext.Response, error) {
+	started := time.Now()
+	oneSecAfterStarting := started.Add(time.Second)
 	tc := TestConfig{}
 	err := l.parseTestConfigObject(obj, &tc)
 	if err != nil {
@@ -133,7 +136,7 @@ func (l *Loki) tick(obj *goja.Object) (httpext.Response, error) {
 
 		l.logger.Infof(
 			"VUId: %v, VUIDGlobal: %v, Scenario Iter: %v, Scenario Local Iter: %v, Scenario Glocal Iter: %v, total VUs: %v, totalOperations: %v",
-			state.VUID, // *
+			state.VUID, // * Use this
 			state.VUIDGlobal,
 			state.GetScenarioVUIter(), // *
 			state.GetScenarioLocalVUIter(),
@@ -153,7 +156,15 @@ func (l *Loki) tick(obj *goja.Object) (httpext.Response, error) {
 		return *httpext.NewResponse(), err
 	}
 
-	// TODO: update the response
+	// Wait the remainder of the 1 second we can take
+	timeLeft := oneSecAfterStarting.Sub(started)
+	if timeLeft < 0 {
+		return *httpext.NewResponse(), nil
+	}
+
+	t := time.NewTimer(timeLeft)
+	defer t.Stop()
+	<-t.C
 	return *httpext.NewResponse(), nil
 }
 

@@ -50,9 +50,6 @@ export default (data) => {
 
   // Write logs
   loki.Tick(vuParams);
-
-  // Wait before next iteration, maybe put this in Tick function
-  sleep(1);
 }
 
 
