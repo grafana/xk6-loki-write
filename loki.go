@@ -3,10 +3,12 @@ package loki
 import (
 	"errors"
 	"fmt"
+	"net/url"
 
 	"github.com/dop251/goja"
-	"github.com/prometheus/tsdb/labels"
+	"github.com/prometheus/common/model"
 	"github.com/sirupsen/logrus"
+	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib/netext/httpext"
 )
@@ -28,20 +30,46 @@ func (*LokiRoot) NewModuleInstance(vu modules.VU) modules.Instance {
 
 // Loki is the k6 extension that can be imported in the Javascript test file.
 type Loki struct {
-	vu     modules.VU
-	logger logrus.FieldLogger
+	vu       modules.VU
+	logger   logrus.FieldLogger
+	url      string
+	randSeed int64
 }
 
 func (l *Loki) Exports() modules.Exports {
 	return modules.Exports{
 		Named: map[string]interface{}{
-			"Tick": l.Tick,
+			"Tick":         l.tick,
+			"CreateClient": l.createClient,
+			"Stop":         l.stop,
 		},
 	}
 }
 
+func (l *Loki) createClient(obj *goja.Object) {
+	rt := l.vu.Runtime()
+
+	if v := obj.Get("randSeed"); !isNully(v) {
+		l.randSeed = v.ToInteger()
+	}
+
+	if v := obj.Get("url"); !isNully(v) {
+		l.url = v.String()
+		u, err := url.Parse(l.url)
+		if err != nil {
+			common.Throw(rt, fmt.Errorf("error parsing url: %v", err))
+		}
+
+		_, err = GetClient(u.String(), l.randSeed)
+		if err != nil {
+			common.Throw(rt, fmt.Errorf("error creating client: %v", err))
+		}
+
+	}
+}
+
 type TestConfig struct {
-	StaticLabels labels.Labels
+	StaticLabels model.LabelSet
 	LineSize     int
 	BytesPerLine int
 	Frequency    int
@@ -72,20 +100,28 @@ func (l *Loki) parseTestConfigObject(obj *goja.Object, tc *TestConfig) error {
 			return fmt.Errorf("staticLabels should be a map of string to strings: %w", err)
 		}
 
-		lbls := labels.FromMap(stringLabels)
-		tc.StaticLabels = lbls
+		ls := model.LabelSet{}
+		for k, v := range stringLabels {
+			ls[model.LabelName(k)] = model.LabelValue(v)
+		}
+		err := ls.Validate()
+		if err != nil {
+			return fmt.Errorf("invalid labelset: %w", err)
+		}
+
+		tc.StaticLabels = ls
 	}
 
 	return nil
 }
 
-func (l *Loki) Tick(obj *goja.Object) (httpext.Response, error) {
+func (l *Loki) tick(obj *goja.Object) (httpext.Response, error) {
 	tc := TestConfig{}
 	err := l.parseTestConfigObject(obj, &tc)
 	if err != nil {
 		return *httpext.NewResponse(), err
 	}
-	l.logger.Infof("received data: %+v", tc)
+	l.logger.Debugf("received data: %+v", tc)
 
 	state := l.vu.State()
 	if state == nil {
@@ -107,12 +143,27 @@ func (l *Loki) Tick(obj *goja.Object) (httpext.Response, error) {
 		)
 	*/
 
-	/*
-		// TODO: send the data for the current vu for 1 second, waiting if needed
-		currentVu := specs.Vus[state.VUID]
-		l.logger.Infof("vuSpec: %+v", currentVu)
-	*/
+	client, err := GetClient(l.url, l.randSeed)
+	if err != nil {
+		return *httpext.NewResponse(), err
+	}
+
+	err = client.GenerateLogs(&tc)
+	if err != nil {
+		return *httpext.NewResponse(), err
+	}
 
 	// TODO: update the response
+	return *httpext.NewResponse(), nil
+}
+
+func (l *Loki) stop() (httpext.Response, error) {
+	client, err := GetClient(l.url, l.randSeed)
+	if err != nil {
+		return *httpext.NewResponse(), err
+	}
+
+	client.Stop()
+
 	return *httpext.NewResponse(), nil
 }
