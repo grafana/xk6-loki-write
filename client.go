@@ -49,7 +49,11 @@ func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.Fi
 
 	for i := 0; i < tc.LinePerSecond; i++ {
 		now := time.Now()
-		c.instance.Handle(lbls, now, c.flog.LogLine(tc.LogType, now))
+		logLine := c.flog.LogLine(tc.LogType, now)
+		if tc.MaxLineSize != 0 {
+			logLine = logLine[:tc.MaxLineSize]
+		}
+		c.instance.Handle(lbls, now, logLine)
 	}
 	return nil
 }

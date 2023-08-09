@@ -32,6 +32,7 @@ export function setup() {
     {
         staticLabels: {"k6test": "true", "namespace": "loki-prod-003", "container": "ingester-zone-a-11"},
         linesPerSec: 7500,
+        maxLineSize: 100,
         logType: "apache_combined",
     },
   ]};
