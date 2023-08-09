@@ -70,12 +70,14 @@ func (l *Loki) createClient(obj *goja.Object) {
 }
 
 type TestConfig struct {
-	StaticLabels   model.LabelSet
-	ChurningLabels map[string]int // Churn the string label every int ticks
-	LinesPerSecond int
-	BytesPerSecond int
-	MaxLineSize    int
-	LogType        string
+	StaticLabels      model.LabelSet
+	ChurningLabels    map[string]int // Churn the string label every int ticks
+	LinesPerSecond    int
+	BytesPerSecond    int
+	MaxLineSize       int
+	RandomLineSizeMin int
+	RandomLineSizeMax int
+	LogType           string
 }
 
 func isNully(v goja.Value) bool {
@@ -84,25 +86,6 @@ func isNully(v goja.Value) bool {
 
 func (l *Loki) parseTestConfigObject(obj *goja.Object, tc *TestConfig) error {
 	rt := l.vu.Runtime()
-
-	if v := obj.Get("linesPerSec"); !isNully(v) {
-		tc.LinesPerSecond = int(v.ToInteger())
-	}
-
-	if v := obj.Get("bytesPerSec"); !isNully(v) {
-		tc.BytesPerSecond = int(v.ToInteger())
-	}
-
-	if tc.LinesPerSecond != 0 && tc.BytesPerSecond != 0 {
-		return fmt.Errorf("only one of linesPerSec and bytesPerSec can be given")
-	}
-	if tc.LinesPerSecond == 0 && tc.BytesPerSecond == 0 {
-		return fmt.Errorf("one of linesPerSec and bytesPerSec has to be given")
-	}
-
-	if v := obj.Get("maxLineSize"); !isNully(v) {
-		tc.MaxLineSize = int(v.ToInteger())
-	}
 
 	if v := obj.Get("staticLabels"); !isNully(v) {
 		var stringLabels map[string]string
@@ -126,6 +109,33 @@ func (l *Loki) parseTestConfigObject(obj *goja.Object, tc *TestConfig) error {
 		if err := rt.ExportTo(v, &tc.ChurningLabels); err != nil {
 			return fmt.Errorf("churningLabels could not be parsed: %w", err)
 		}
+	}
+
+	if v := obj.Get("linesPerSec"); !isNully(v) {
+		tc.LinesPerSecond = int(v.ToInteger())
+	}
+
+	if v := obj.Get("bytesPerSec"); !isNully(v) {
+		tc.BytesPerSecond = int(v.ToInteger())
+	}
+
+	if tc.LinesPerSecond != 0 && tc.BytesPerSecond != 0 {
+		return fmt.Errorf("only one of linesPerSec and bytesPerSec can be given")
+	}
+	if tc.LinesPerSecond == 0 && tc.BytesPerSecond == 0 {
+		return fmt.Errorf("one of linesPerSec and bytesPerSec has to be given")
+	}
+
+	if v := obj.Get("maxLineSize"); !isNully(v) {
+		tc.MaxLineSize = int(v.ToInteger())
+	}
+
+	if v := obj.Get("randomLineSizeMin"); !isNully(v) {
+		tc.RandomLineSizeMin = int(v.ToInteger())
+	}
+
+	if v := obj.Get("randomLineSizeMax"); !isNully(v) {
+		tc.RandomLineSizeMax = int(v.ToInteger())
 	}
 
 	if v := obj.Get("logType"); !isNully(v) {

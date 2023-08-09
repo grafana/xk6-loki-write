@@ -39,6 +39,25 @@ func GetClient(url string, randSeed int64) (*Client, error) {
 	return &Client{instance: instance, flog: flog}, nil
 }
 
+func clipLine(tc *TestConfig, line string) string {
+	if tc.MaxLineSize != 0 {
+		return line[:tc.MaxLineSize]
+	}
+
+	if tc.RandomLineSizeMin != 0 && tc.RandomLineSizeMax != 0 {
+		if len(line) <= tc.RandomLineSizeMin {
+			return line
+		}
+		proposedMax := tc.RandomLineSizeMin + rand.Intn(tc.RandomLineSizeMax-tc.RandomLineSizeMin)
+		if len(line) < proposedMax {
+			proposedMax = len(line)
+		}
+		return line[:proposedMax]
+	}
+
+	return line
+}
+
 func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.FieldLogger) error {
 	lbls := tc.StaticLabels.Clone()
 	lbls[model.LabelName("vuid")] = model.LabelValue(strconv.Itoa(int(state.VUID)))
@@ -51,9 +70,7 @@ func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.Fi
 		for i := 0; i < tc.LinesPerSecond; i++ {
 			now := time.Now()
 			logLine := c.flog.LogLine(tc.LogType, now)
-			if tc.MaxLineSize != 0 {
-				logLine = logLine[:tc.MaxLineSize]
-			}
+			logLine = clipLine(tc, logLine)
 			c.instance.Handle(lbls, now, logLine)
 		}
 	}
@@ -63,9 +80,7 @@ func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.Fi
 		for {
 			now := time.Now()
 			logLine := c.flog.LogLine(tc.LogType, now)
-			if tc.MaxLineSize != 0 {
-				logLine = logLine[:tc.MaxLineSize]
-			}
+			logLine = clipLine(tc, logLine)
 			currentSize += len(logLine)
 			if currentSize > tc.BytesPerSecond {
 				remainder := len(logLine) - (currentSize - tc.BytesPerSecond)
