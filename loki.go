@@ -85,7 +85,7 @@ func isNully(v goja.Value) bool {
 func (l *Loki) parseTestConfigObject(obj *goja.Object, tc *TestConfig) error {
 	rt := l.vu.Runtime()
 
-	if v := obj.Get("lines"); !isNully(v) {
+	if v := obj.Get("linesPerSec"); !isNully(v) {
 		tc.LineSize = int(v.ToInteger())
 	}
 

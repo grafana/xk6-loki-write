@@ -20,7 +20,7 @@ Before running a test update the following in the test script:
    {
        staticLabels: {"k6test": "true","namespace": "loki-prod-001", "source": "kafka"},
        churningLabels: {"pod": 100}, // add a churning label, value will be replaced with a number every 100 ticks
-       lines: 20000,
+       linesPerSec: 20000,
        logType: "apache_combined",
    },
    ```
@@ -29,6 +29,6 @@ Before running a test update the following in the test script:
    | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- | :-------- |
    | staticLabels   | a map where the string keys are the static label name and the string values the label values                                                           |           |
    | churningLabels | a map where the string keys are the churning label name and the int value is the quotient of the current run of the VU devideb by the value in the map |           |
-   | lines          | the number of lines to send per second                                                                                                                 |           |
+   | linesPerSec    | the number of lines to send per second                                                                                                                 |           |
    | logType        | the type of log lines to send, must be one of "apache_common", "apache_combined", "apache_error", "rfc3164", "rfc5424", "common_log", "json", "logfmt" | "logfmt"  |
 
