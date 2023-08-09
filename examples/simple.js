@@ -26,7 +26,7 @@ export function setup() {
     },
     {
         staticLabels: {"k6test": "true", "namespace": "loki-prod-002", "container": "distributor"},
-        linesPerSec: 5000,
+        bytesPerSec: 5000,
         logType: "common_log",
     },
     {

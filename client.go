@@ -47,14 +47,36 @@ func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.Fi
 		lbls[model.LabelName(churnLabelKey)] = model.LabelValue(strconv.Itoa(int(quotient)))
 	}
 
-	for i := 0; i < tc.LinesPerSecond; i++ {
-		now := time.Now()
-		logLine := c.flog.LogLine(tc.LogType, now)
-		if tc.MaxLineSize != 0 {
-			logLine = logLine[:tc.MaxLineSize]
+	if tc.LinesPerSecond != 0 {
+		for i := 0; i < tc.LinesPerSecond; i++ {
+			now := time.Now()
+			logLine := c.flog.LogLine(tc.LogType, now)
+			if tc.MaxLineSize != 0 {
+				logLine = logLine[:tc.MaxLineSize]
+			}
+			c.instance.Handle(lbls, now, logLine)
 		}
-		c.instance.Handle(lbls, now, logLine)
 	}
+
+	if tc.BytesPerSecond != 0 {
+		currentSize := 0
+		for {
+			now := time.Now()
+			logLine := c.flog.LogLine(tc.LogType, now)
+			if tc.MaxLineSize != 0 {
+				logLine = logLine[:tc.MaxLineSize]
+			}
+			currentSize += len(logLine)
+			if currentSize > tc.BytesPerSecond {
+				remainder := len(logLine) - (currentSize - tc.BytesPerSecond)
+				logLine = logLine[:remainder]
+				c.instance.Handle(lbls, now, logLine)
+				break
+			}
+			c.instance.Handle(lbls, now, logLine)
+		}
+	}
+
 	return nil
 }
 
