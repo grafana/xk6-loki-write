@@ -75,6 +75,7 @@ type TestConfig struct {
 	LineSize       int
 	BytesPerLine   int
 	Frequency      int
+	LogType        string
 }
 
 func isNully(v goja.Value) bool {
@@ -118,6 +119,18 @@ func (l *Loki) parseTestConfigObject(obj *goja.Object, tc *TestConfig) error {
 		if err := rt.ExportTo(v, &tc.ChurningLabels); err != nil {
 			return fmt.Errorf("churningLabels could not be parsed: %w", err)
 		}
+	}
+
+	if v := obj.Get("logType"); !isNully(v) {
+		tc.LogType = v.String()
+
+		switch tc.LogType {
+		case "apache_common", "apache_combined", "apache_error", "rfc3164", "rfc5424", "common_log", "json", "logfmt":
+		default:
+			return fmt.Errorf("invalid logtype %v", tc.LogType)
+		}
+	} else {
+		tc.LogType = "logfmt"
 	}
 
 	return nil
