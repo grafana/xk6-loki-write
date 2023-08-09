@@ -27,8 +27,7 @@ Before running a test update the following in the test script:
 
    | Field          | Description                                                                                                                                            | Default   |
    | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- | :-------- |
-   | staticLabels   | a map where the string keys are the static label name and the string values the label values                                                           | empty          |
+   | staticLabels   | a map where the string keys are the static label name and the string values the label values                                                           | empty     |
    | churningLabels | a map where the string keys are the churning label name and the int value is the quotient of the current run of the VU devideb by the value in the map | empty     |
    | linesPerSec    | the number of lines to send per second                                                                                                                 | 0         |
    | logType        | the type of log lines to send, must be one of "apache_common", "apache_combined", "apache_error", "rfc3164", "rfc5424", "common_log", "json", "logfmt" | "logfmt"  |
-

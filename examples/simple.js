@@ -22,22 +22,16 @@ export function setup() {
         staticLabels: {"k6test": "true","namespace": "loki-prod-001", "source": "kafka"},
         churningLabels: {"pod": 100}, // add a churning label, value will be replaced with a number every 100 ticks
         linesPerSec: 20000,
-        bytes: 200,   // TODO: not used yet
-        frequency: 5, // TODO: based on state.GetScenarioVUIter() module vus : every 5 ticks/seconds
         // The logType is the default "logfmt"
     },
     {
         staticLabels: {"k6test": "true", "namespace": "loki-prod-002", "container": "distributor"},
         linesPerSec: 5000,
-        bytes: 5000,
-        frequency: 1,
         logType: "common_log",
     },
     {
         staticLabels: {"k6test": "true", "namespace": "loki-prod-003", "container": "ingester-zone-a-11"},
         linesPerSec: 7500,
-        bytes: 5000,
-        frequency: 1,
         logType: "apache_combined",
     },
   ]};
