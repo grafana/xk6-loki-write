@@ -49,7 +49,7 @@ func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.Fi
 
 	for i := 0; i < tc.LineSize; i++ {
 		now := time.Now()
-		c.instance.Handle(lbls, now, c.flog.LogLine("logfmt", now))
+		c.instance.Handle(lbls, now, c.flog.LogLine(tc.LogType, now))
 	}
 	return nil
 }
