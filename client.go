@@ -47,7 +47,7 @@ func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.Fi
 		lbls[model.LabelName(churnLabelKey)] = model.LabelValue(strconv.Itoa(int(quotient)))
 	}
 
-	for i := 0; i < tc.LineSize; i++ {
+	for i := 0; i < tc.LinePerSecond; i++ {
 		now := time.Now()
 		c.instance.Handle(lbls, now, c.flog.LogLine(tc.LogType, now))
 	}

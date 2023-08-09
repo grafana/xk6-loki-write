@@ -72,7 +72,7 @@ func (l *Loki) createClient(obj *goja.Object) {
 type TestConfig struct {
 	StaticLabels   model.LabelSet
 	ChurningLabels map[string]int // Churn the string label every int ticks
-	LineSize       int
+	LinePerSecond  int
 	BytesPerLine   int
 	Frequency      int
 	LogType        string
@@ -86,7 +86,7 @@ func (l *Loki) parseTestConfigObject(obj *goja.Object, tc *TestConfig) error {
 	rt := l.vu.Runtime()
 
 	if v := obj.Get("linesPerSec"); !isNully(v) {
-		tc.LineSize = int(v.ToInteger())
+		tc.LinePerSecond = int(v.ToInteger())
 	}
 
 	if v := obj.Get("bytes"); !isNully(v) {
