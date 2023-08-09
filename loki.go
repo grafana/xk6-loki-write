@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/dop251/goja"
@@ -71,10 +70,11 @@ func (l *Loki) createClient(obj *goja.Object) {
 }
 
 type TestConfig struct {
-	StaticLabels model.LabelSet
-	LineSize     int
-	BytesPerLine int
-	Frequency    int
+	StaticLabels   model.LabelSet
+	ChurningLabels map[string]int // Churn the string label every int ticks
+	LineSize       int
+	BytesPerLine   int
+	Frequency      int
 }
 
 func isNully(v goja.Value) bool {
@@ -114,6 +114,12 @@ func (l *Loki) parseTestConfigObject(obj *goja.Object, tc *TestConfig) error {
 		tc.StaticLabels = ls
 	}
 
+	if v := obj.Get("churningLabels"); !isNully(v) {
+		if err := rt.ExportTo(v, &tc.ChurningLabels); err != nil {
+			return fmt.Errorf("churningLabels could not be parsed: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -131,31 +137,13 @@ func (l *Loki) tick(obj *goja.Object) (httpext.Response, error) {
 	if state == nil {
 		return *httpext.NewResponse(), errors.New("state is nil")
 	}
-	/*
-		totalVUs := state.Options.VUs.ValueOrZero()
-		totalIterations := state.Options.Iterations.ValueOrZero()
-
-		l.logger.Infof(
-			"VUId: %v, VUIDGlobal: %v, Scenario Iter: %v, Scenario Local Iter: %v, Scenario Glocal Iter: %v, total VUs: %v, totalOperations: %v",
-			state.VUID, // * Use this
-			state.VUIDGlobal,
-			state.GetScenarioVUIter(), // *
-			state.GetScenarioLocalVUIter(),
-			state.GetScenarioGlobalVUIter(),
-			totalVUs, // *
-			totalIterations,
-		)
-	*/
 
 	client, err := GetClient(l.url, l.randSeed)
 	if err != nil {
 		return *httpext.NewResponse(), err
 	}
 
-	// Add a vuid label
-	tc.StaticLabels[model.LabelName("vuid")] = model.LabelValue(strconv.Itoa(int(state.VUID)))
-
-	err = client.GenerateLogs(&tc)
+	err = client.GenerateLogs(&tc, state, l.logger)
 	if err != nil {
 		return *httpext.NewResponse(), err
 	}

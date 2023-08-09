@@ -20,6 +20,7 @@ export function setup() {
   return {"vuSpecs": [
     {
         staticLabels: {"k6test": "true","namespace": "loki-prod-001", "source": "kafka"},
+        churningLabels: {"pod": 100}, // add a churning label, value will be replaced with a number every 100 ticks
         lines: 20000,
         bytes: 200,   // TODO: not used yet
         frequency: 5, // TODO: based on state.GetScenarioVUIter() module vus : every 5 ticks/seconds

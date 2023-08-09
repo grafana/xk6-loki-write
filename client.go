@@ -2,12 +2,16 @@ package loki
 
 import (
 	"math/rand"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
 	lokiClient "github.com/grafana/loki-client-go/loki"
 	"github.com/grafana/xk6-loki/flog"
+	"github.com/prometheus/common/model"
+	"github.com/sirupsen/logrus"
+	"go.k6.io/k6/lib"
 )
 
 var once sync.Once
@@ -35,10 +39,17 @@ func GetClient(url string, randSeed int64) (*Client, error) {
 	return &Client{instance: instance, flog: flog}, nil
 }
 
-func (c *Client) GenerateLogs(tc *TestConfig) error {
+func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.FieldLogger) error {
+	lbls := tc.StaticLabels.Clone()
+	lbls[model.LabelName("vuid")] = model.LabelValue(strconv.Itoa(int(state.VUID)))
+	for churnLabelKey, churnLabelValue := range tc.ChurningLabels {
+		quotient := state.GetScenarioVUIter() / uint64(churnLabelValue)
+		lbls[model.LabelName(churnLabelKey)] = model.LabelValue(strconv.Itoa(int(quotient)))
+	}
+
 	for i := 0; i < tc.LineSize; i++ {
 		now := time.Now()
-		c.instance.Handle(tc.StaticLabels, now, c.flog.LogLine("logfmt", now))
+		c.instance.Handle(lbls, now, c.flog.LogLine("logfmt", now))
 	}
 	return nil
 }
