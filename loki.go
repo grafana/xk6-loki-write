@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/dop251/goja"
@@ -150,6 +151,9 @@ func (l *Loki) tick(obj *goja.Object) (httpext.Response, error) {
 	if err != nil {
 		return *httpext.NewResponse(), err
 	}
+
+	// Add a vuid label
+	tc.StaticLabels[model.LabelName("vuid")] = model.LabelValue(strconv.Itoa(int(state.VUID)))
 
 	err = client.GenerateLogs(&tc)
 	if err != nil {
