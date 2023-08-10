@@ -43,6 +43,7 @@ Before running a test update the following in the test script:
    | maxLineSize       | maximum length of a line, if short this will be the likely length of the line, not enabled if 0, this can result in invalid log line for the logType   | 0         |
    | randomLineSizeMin | the line size will be randomly chosen between this and randomLineSizeMax, not used if maxLineSize is set, not enabled if 0, shorter lines remain as is | 0         |
    | randomLineSizeMax | the line size will be randomly chosen between randomLineSizeMax and this, not used if maxLineSize is set, not enabled if 0                             | 0         |
-   | logType        | the type of log lines to send, must be one of "apache_common", "apache_combined", "apache_error", "rfc3164", "rfc5424", "common_log", "json", "logfmt" | "logfmt"  |
+   | logType           | the type of log lines to send, must be one of "apache_common", "apache_combined", "apache_error", "rfc3164", "rfc5424", "common_log", "json", "logfmt" | "logfmt"  |
+   | tenantID          | overwrites the tenantID (if any)                                                                                                                       | ""        |
 
    At least one of linesPerSec or bytesPerSec has to be given.

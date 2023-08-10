@@ -70,6 +70,9 @@ func (c *Client) send(lbls *model.LabelSet, tc *TestConfig, vuID model.LabelValu
 	if c.addVuAsTenantID {
 		(*lbls)[model.LabelName(lokiClient.ReservedLabelTenantID)] = vuID
 	}
+	if tc.TenantID != "" {
+		(*lbls)[model.LabelName(lokiClient.ReservedLabelTenantID)] = model.LabelValue(tc.TenantID)
+	}
 	c.instance.Handle(lbls.Clone(), now, logLine)
 }
 

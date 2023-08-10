@@ -83,6 +83,7 @@ type TestConfig struct {
 	RandomLineSizeMin int
 	RandomLineSizeMax int
 	LogType           string
+	TenantID          string
 }
 
 func isNully(v goja.Value) bool {
@@ -157,6 +158,10 @@ func (l *Loki) parseTestConfigObject(obj *goja.Object, tc *TestConfig) error {
 		}
 	} else {
 		tc.LogType = "logfmt"
+	}
+
+	if v := obj.Get("tenantID"); !isNully(v) {
+		tc.TenantID = v.String()
 	}
 
 	return nil

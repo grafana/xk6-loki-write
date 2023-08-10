@@ -38,6 +38,7 @@ export function setup() {
         linesPerSec: 7500,
         maxLineSize: 100,
         logType: "apache_combined",
+        tenantID: "465"
     },
   ]};
 }
