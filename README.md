@@ -14,7 +14,10 @@ Next generation Loki plugin for k6.
 
 Before running a test update the following in the test script:
 
-1. Set the url field in the CONFIG struct to the Loki you will be sending logs to. The randSeed field is the random value used to initialize the fake log data library. By keeping it the same the same logs wil be generated.
+1. Update the CONFIG struct:
+   * Set the url field in the CONFIG struct to the Loki you will be sending logs to.
+   * The randSeed field is the random value used to initialize the fake log data library. By keeping it the same the same logs wil be generated.
+   * Set addVuAsTenantID to true to send a `X-Scope-OrgID` header set to the current VU ID. If set to false no such header is sent.
 2. Update the `vuSpecs` array in the `setup` function:
 
    For each VU a new VU specification json object should created and added to the vuSpecs array. Each VU specification looks like this:

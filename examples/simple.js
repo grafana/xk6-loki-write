@@ -5,6 +5,7 @@ import exec from 'k6/execution';
 const CONFIG = {
   url: `http://localhost:3100`,
   randSeed: 65,
+  addVuAsTenantID: false,
 };
 loki.CreateClient(CONFIG);
 

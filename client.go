@@ -18,11 +18,12 @@ var once sync.Once
 var instance *lokiClient.Client
 
 type Client struct {
-	instance *lokiClient.Client
-	flog     *flog.Flog
+	instance        *lokiClient.Client
+	flog            *flog.Flog
+	addVuAsTenantID bool
 }
 
-func GetClient(url string, randSeed int64) (*Client, error) {
+func GetClient(url string, randSeed int64, addVuAsTenantID bool) (*Client, error) {
 	var err error
 	once.Do(func() {
 		instance, err = lokiClient.NewWithDefault(url)
@@ -36,7 +37,7 @@ func GetClient(url string, randSeed int64) (*Client, error) {
 
 	flog := flog.New(rand, faker)
 
-	return &Client{instance: instance, flog: flog}, nil
+	return &Client{instance: instance, flog: flog, addVuAsTenantID: addVuAsTenantID}, nil
 }
 
 func clipLine(tc *TestConfig, line string) string {
@@ -62,9 +63,20 @@ func addStream(lbls *model.LabelSet, tc *TestConfig) {
 	(*lbls)[model.LabelName("stream")] = model.LabelValue(strconv.Itoa(rand.Intn(tc.Streams)))
 }
 
+func (c *Client) send(lbls *model.LabelSet, tc *TestConfig, vuID model.LabelValue, now time.Time, logLine string) {
+	if tc.Streams != 0 {
+		addStream(lbls, tc)
+	}
+	if c.addVuAsTenantID {
+		(*lbls)[model.LabelName(lokiClient.ReservedLabelTenantID)] = vuID
+	}
+	c.instance.Handle(lbls.Clone(), now, logLine)
+}
+
 func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.FieldLogger) error {
 	lbls := tc.StaticLabels.Clone()
-	lbls[model.LabelName("vuid")] = model.LabelValue(strconv.Itoa(int(state.VUID)))
+	vuID := model.LabelValue(strconv.Itoa(int(state.VUID)))
+	lbls[model.LabelName("vuid")] = vuID
 	for churnLabelKey, churnLabelValue := range tc.ChurningLabels {
 		quotient := state.GetScenarioVUIter() / uint64(churnLabelValue)
 		lbls[model.LabelName(churnLabelKey)] = model.LabelValue(strconv.Itoa(int(quotient)))
@@ -75,10 +87,7 @@ func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.Fi
 			now := time.Now()
 			logLine := c.flog.LogLine(tc.LogType, now)
 			logLine = clipLine(tc, logLine)
-			if tc.Streams != 0 {
-				addStream(&lbls, tc)
-			}
-			c.instance.Handle(lbls.Clone(), now, logLine)
+			c.send(&lbls, tc, vuID, now, logLine)
 		}
 	}
 
@@ -92,13 +101,10 @@ func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.Fi
 			if currentSize > tc.BytesPerSecond {
 				remainder := len(logLine) - (currentSize - tc.BytesPerSecond)
 				logLine = logLine[:remainder]
-				c.instance.Handle(lbls, now, logLine)
+				c.send(&lbls, tc, vuID, now, logLine)
 				break
 			}
-			if tc.Streams != 0 {
-				addStream(&lbls, tc)
-			}
-			c.instance.Handle(lbls.Clone(), now, logLine)
+			c.send(&lbls, tc, vuID, now, logLine)
 		}
 	}
 

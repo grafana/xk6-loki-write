@@ -31,10 +31,11 @@ func (*LokiRoot) NewModuleInstance(vu modules.VU) modules.Instance {
 
 // Loki is the k6 extension that can be imported in the Javascript test file.
 type Loki struct {
-	vu       modules.VU
-	logger   logrus.FieldLogger
-	url      string
-	randSeed int64
+	vu              modules.VU
+	logger          logrus.FieldLogger
+	url             string
+	randSeed        int64
+	addVuAsTenantID bool
 }
 
 func (l *Loki) Exports() modules.Exports {
@@ -61,11 +62,14 @@ func (l *Loki) createClient(obj *goja.Object) {
 			common.Throw(rt, fmt.Errorf("error parsing url: %v", err))
 		}
 
-		_, err = GetClient(u.String(), l.randSeed)
+		_, err = GetClient(u.String(), l.randSeed, l.addVuAsTenantID)
 		if err != nil {
 			common.Throw(rt, fmt.Errorf("error creating client: %v", err))
 		}
+	}
 
+	if v := obj.Get("addVuAsTenantID"); !isNully(v) {
+		l.addVuAsTenantID = v.ToBoolean()
 	}
 }
 
@@ -173,7 +177,7 @@ func (l *Loki) tick(obj *goja.Object) (httpext.Response, error) {
 		return *httpext.NewResponse(), errors.New("state is nil")
 	}
 
-	client, err := GetClient(l.url, l.randSeed)
+	client, err := GetClient(l.url, l.randSeed, l.addVuAsTenantID)
 	if err != nil {
 		return *httpext.NewResponse(), err
 	}
@@ -196,7 +200,7 @@ func (l *Loki) tick(obj *goja.Object) (httpext.Response, error) {
 }
 
 func (l *Loki) stop() (httpext.Response, error) {
-	client, err := GetClient(l.url, l.randSeed)
+	client, err := GetClient(l.url, l.randSeed, l.addVuAsTenantID)
 	if err != nil {
 		return *httpext.NewResponse(), err
 	}
