@@ -34,6 +34,7 @@ Before running a test update the following in the test script:
    | :---------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- | :-------- |
    | staticLabels      | a map where the string keys are the static label name and the string values the label values                                                           | empty     |
    | churningLabels    | a map where the string keys are the churning label name and the int value is the quotient of the current run of the VU devideb by the value in the map | empty     |
+   | streams           | add a label named stream with as value a random number between [0, streams) for each line, not enabled if 0                                            | 0         |
    | linesPerSec       | the number of lines to send per second, mutually exclusive with bytesPerSec, not enabled if 0                                                          | 0         |
    | bytesPerSec       | the number of bytes to send per second, mutually exclusive with linesPerSec, not enabled if 0                                                          | 0         |
    | maxLineSize       | maximum length of a line, if short this will be the likely length of the line, not enabled if 0, this can result in invalid log line for the logType   | 0         |

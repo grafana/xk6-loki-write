@@ -21,6 +21,7 @@ export function setup() {
     {
         staticLabels: {"k6test": "true","namespace": "loki-prod-001", "source": "kafka"},
         churningLabels: {"pod": 100}, // add a churning label, value will be replaced with a number every 100 ticks
+        streams: 8,
         linesPerSec: 20000,
         randomLineSizeMin: 100,
         randomLineSizeMax: 1000,

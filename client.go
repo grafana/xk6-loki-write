@@ -58,6 +58,10 @@ func clipLine(tc *TestConfig, line string) string {
 	return line
 }
 
+func addStream(lbls *model.LabelSet, tc *TestConfig) {
+	(*lbls)[model.LabelName("stream")] = model.LabelValue(strconv.Itoa(rand.Intn(tc.Streams)))
+}
+
 func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.FieldLogger) error {
 	lbls := tc.StaticLabels.Clone()
 	lbls[model.LabelName("vuid")] = model.LabelValue(strconv.Itoa(int(state.VUID)))
@@ -71,7 +75,10 @@ func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.Fi
 			now := time.Now()
 			logLine := c.flog.LogLine(tc.LogType, now)
 			logLine = clipLine(tc, logLine)
-			c.instance.Handle(lbls, now, logLine)
+			if tc.Streams != 0 {
+				addStream(&lbls, tc)
+			}
+			c.instance.Handle(lbls.Clone(), now, logLine)
 		}
 	}
 
@@ -88,7 +95,10 @@ func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.Fi
 				c.instance.Handle(lbls, now, logLine)
 				break
 			}
-			c.instance.Handle(lbls, now, logLine)
+			if tc.Streams != 0 {
+				addStream(&lbls, tc)
+			}
+			c.instance.Handle(lbls.Clone(), now, logLine)
 		}
 	}
 
