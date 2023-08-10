@@ -58,7 +58,6 @@ export default (data) => {
   // Get the VU number
   let currentVU = exec.vu.idInTest - 1;
   let vuParams = data["vuSpecs"][currentVU];
-  // console.log('vuParams: ' + JSON.stringify(vuParams));
 
   // Write logs
   loki.Tick(vuParams);
