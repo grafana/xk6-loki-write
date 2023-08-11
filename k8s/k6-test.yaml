@@ -9,6 +9,6 @@ spec:
   script:
     configMap:
       name: my-test
-      file: local.js
+      file: simple.js
   runner:
     image: <registry>/k6-extended:local

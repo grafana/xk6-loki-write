@@ -56,7 +56,7 @@ Before running a test update the following in the test script:
 2. Build a new k8s image to be used by the k6 operator:
 
    ```
-   docker build --platform linux/amd64 -t k6-extended:local .
+   docker build --platform linux/amd64 -f k8s/Dockerfile.k8s -t k6-extended:local .
    ```
 
    Upload the resulting image to a registry where it can be downloaded from Kubernetes.
@@ -64,7 +64,7 @@ Before running a test update the following in the test script:
 3. Create a configmap containing the test script:
 
    ```
-   kubectl create configmap my-test -n k6 --from-file simple.js
+   kubectl create configmap my-test -n k6 --from-file examples/simple.js
    ```
 
 4. Create a K6 CR referencing the new image. For example :
@@ -84,4 +84,4 @@ Before running a test update the following in the test script:
      image: <registry>/k6-extended:local
    ```
 
-   This will be picked up the k6 operator and run as jobs whose name starts with `k6-sample`
+   This will be picked up the k6 operator and run as jobs whose name starts with `k6-sample`. This example can be found in the k8s directory.
