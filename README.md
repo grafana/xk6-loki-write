@@ -47,3 +47,41 @@ Before running a test update the following in the test script:
    | tenantID          | overwrites the tenantID (if any)                                                                                                                       | ""        |
 
    At least one of linesPerSec or bytesPerSec has to be given.
+
+
+## Running in Kubernetes
+
+1. Install the k6 operator as mentioned in https://k6.io/blog/running-distributed-tests-on-k8s/
+
+2. Build a new k8s image to be used by the k6 operator:
+
+   ```
+   docker build --platform linux/amd64 -t k6-extended:local .
+   ```
+
+   Upload the resulting image to a registry where it can be downloaded from Kubernetes.
+
+3. Create a configmap containing the test script:
+
+   ```
+   kubectl create configmap my-test -n k6 --from-file simple.js
+   ```
+
+4. Create a K6 CR referencing the new image. For example :
+
+   ```
+   apiVersion: k6.io/v1alpha1
+   kind: K6
+   metadata:
+     name: k6-sample
+   spec:
+     parallelism: 4
+     script:
+       configMap:
+         name: my-test
+         file: simple.js
+     runner:
+     image: <registry>/k6-extended:local
+   ```
+
+   This will be picked up the k6 operator and run as jobs whose name starts with `k6-sample`

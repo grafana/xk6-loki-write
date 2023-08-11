@@ -1,0 +1,14 @@
+# To be used with the k6 operator: see https://k6.io/blog/running-distributed-tests-on-k8s/
+---
+apiVersion: k6.io/v1alpha1
+kind: K6
+metadata:
+  name: k6-sample
+spec:
+  parallelism: 4
+  script:
+    configMap:
+      name: my-test
+      file: local.js
+  runner:
+    image: <registry>/k6-extended:local
