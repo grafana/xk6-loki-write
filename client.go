@@ -11,19 +11,23 @@ import (
 	"github.com/grafana/xk6-loki/flog"
 	"github.com/prometheus/common/model"
 	"github.com/sirupsen/logrus"
+	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib"
+	"go.k6.io/k6/metrics"
 )
 
 var once sync.Once
 var instance *lokiClient.Client
 
 type Client struct {
+	vu              modules.VU
+	metrics         lokiMetrics
 	instance        *lokiClient.Client
 	flog            *flog.Flog
 	addVuAsTenantID bool
 }
 
-func GetClient(url string, randSeed int64, addVuAsTenantID bool) (*Client, error) {
+func GetClient(url string, vu modules.VU, m lokiMetrics, randSeed int64, addVuAsTenantID bool) (*Client, error) {
 	var err error
 	once.Do(func() {
 		instance, err = lokiClient.NewWithDefault(url)
@@ -37,7 +41,7 @@ func GetClient(url string, randSeed int64, addVuAsTenantID bool) (*Client, error
 
 	flog := flog.New(rand, faker)
 
-	return &Client{instance: instance, flog: flog, addVuAsTenantID: addVuAsTenantID}, nil
+	return &Client{instance: instance, flog: flog, vu: vu, metrics: m, addVuAsTenantID: addVuAsTenantID}, nil
 }
 
 func clipLine(tc *TestConfig, line string) string {
@@ -85,35 +89,77 @@ func (c *Client) GenerateLogs(tc *TestConfig, state *lib.State, logger logrus.Fi
 		lbls[model.LabelName(churnLabelKey)] = model.LabelValue(strconv.Itoa(int(quotient)))
 	}
 
+	var bytes int // TODO: make this unicode aware
+	var lines int
+
+	state.Tags.Modify(func(tagsAndMeta *metrics.TagsAndMeta) {
+		tagsAndMeta.SetTag("vuid", string(vuID))
+	})
+
 	if tc.LinesPerSecond != 0 {
 		for i := 0; i < tc.LinesPerSecond; i++ {
 			now := time.Now()
 			logLine := c.flog.LogLine(tc.LogType, now)
 			logLine = clipLine(tc, logLine)
+			bytes += len(logLine)
 			c.send(&lbls, tc, vuID, now, logLine)
 		}
+		lines = tc.LinesPerSecond
 	}
 
 	if tc.BytesPerSecond != 0 {
-		currentSize := 0
 		for {
 			now := time.Now()
 			logLine := c.flog.LogLine(tc.LogType, now)
 			logLine = clipLine(tc, logLine)
-			currentSize += len(logLine)
-			if currentSize > tc.BytesPerSecond {
-				remainder := len(logLine) - (currentSize - tc.BytesPerSecond)
+			bytes += len(logLine)
+			if bytes > tc.BytesPerSecond {
+				remainder := len(logLine) - (bytes - tc.BytesPerSecond)
 				logLine = logLine[:remainder]
+				bytes += len(logLine)
 				c.send(&lbls, tc, vuID, now, logLine)
+				lines += 1
 				break
 			}
 			c.send(&lbls, tc, vuID, now, logLine)
+			lines += 1
 		}
 	}
+
+	c.reportMetricsFromBatch(bytes, lines)
 
 	return nil
 }
 
 func (c *Client) Stop() {
 	c.instance.Stop()
+}
+
+func (c *Client) reportMetricsFromBatch(bytes, lines int) {
+	now := time.Now()
+	ctx := c.vu.Context()
+	ctm := c.vu.State().Tags.GetCurrentValues()
+
+	metrics.PushIfNotDone(ctx, c.vu.State().Samples, metrics.ConnectedSamples{
+		Samples: []metrics.Sample{
+			{
+				TimeSeries: metrics.TimeSeries{
+					Metric: c.metrics.ClientUncompressedBytes,
+					Tags:   ctm.Tags,
+				},
+				Metadata: ctm.Metadata,
+				Value:    float64(bytes),
+				Time:     now,
+			},
+			{
+				TimeSeries: metrics.TimeSeries{
+					Metric: c.metrics.ClientLines,
+					Tags:   ctm.Tags,
+				},
+				Metadata: ctm.Metadata,
+				Value:    float64(lines),
+				Time:     now,
+			},
+		},
+	})
 }
