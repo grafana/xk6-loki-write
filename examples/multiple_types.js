@@ -3,8 +3,7 @@ import loki from 'k6/x/ngloki';
 import exec from 'k6/execution';
 
 const CONFIG = {
-  // url: `http://localhost:3100`
-  url: `https://5901:glc_eyJvIjoiNDAzODE1IiwibiI6InN0YWNrLTEzNjU2Mi1obC10ZXN0azYiLCJrIjoiTloxTnZQNDFLYm14NDFHczQwbTU0MlNvIiwibSI6eyJyIjoidXMifX0=@logs-prod-us-central1.grafana.net/loki/api/v1/push`,
+  url: `http://localhost:3100`,
   randSeed: 65,
   addVuAsTenantID: true,
 };
