@@ -1,5 +1,5 @@
-# xk6-ngloki
-Next generation Loki plugin for k6.
+# xk6-loki-write
+Loki write plugin for k6.
 
  This uses each K6 virtual user (VU) as a substitute for a Grafana agent. Adding more VUs means adding more agent.
  Each VUs can specify the nr of lines or bytes that will be sent per second.
@@ -7,7 +7,7 @@ Next generation Loki plugin for k6.
 ## Build instructions
 
 1. Install xk6 via these [installation instructions](https://github.com/grafana/xk6#install-xk6)
-2. Run `xk6 build --with xk6-ngloki=.`
+2. Run `xk6 build --with xk6-loki-write=.`
 3. Run an example test using `./xk6 run example/simple.js`
 
 ## Configuration parameters
